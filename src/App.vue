@@ -8,22 +8,25 @@
           @definir-presupuesto="definirPresupuesto"
         />
         <ControlPresupuesto
+          v-else
           :presupuesto="presupuesto"
           :disponible="disponible"
           :gastado="gastado"
-          v-else
+          @reset-app="resetApp"
         />
       </div>
     </header>
     <main v-if="presupuesto > 0">
+      <Filtros v-model:filtro="filtro" />
       <div class="listado-gastos contenedor">
-        <h2>{{ gastos.length > 0 ? "Gastos" : "No hay gastos" }}</h2>
+        <h2>{{ gastosFiltrados.length > 0 ? "Gastos" : "No hay gastos" }}</h2>
 
         <Gasto
-          v-for="gasto in gastos"
+          v-for="gasto in gastosFiltrados"
           :key="gasto.id"
           :gasto="gasto"
           @seleccionar-gasto="seleccionarGasto"
+          @eliminar-gasto="eliminarGasto"
         />
       </div>
       <div class="crear-gasto">
@@ -39,6 +42,7 @@
         @guardar-gasto="guardarGasto"
         :modal="modal"
         :disponible="disponible"
+        :id="gasto.id"
         v-model:nombre="gasto.nombre"
         v-model:cantidad="gasto.cantidad"
         v-model:categoria="gasto.categoria"
@@ -48,9 +52,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch } from "vue";
+import { ref, reactive, watch, computed, onMounted } from "vue";
 import { generarId, formatearFecha } from "./helpers";
 import Modal from "./components/Modal.vue";
+import Filtros from "./components/Filtros.vue";
 import Presupuesto from "./components/Presupuesto.vue";
 import ControlPresupuesto from "./components/ControlPresupuesto.vue";
 import Gasto from "./components/Gasto.vue";
@@ -59,6 +64,7 @@ import iconoNuevoGasto from "./assets/img/nuevo-gasto.svg";
 const presupuesto = ref(0);
 const disponible = ref(0);
 const gastado = ref(0);
+const filtro = ref("");
 
 const modal = reactive({
   mostrar: false,
@@ -72,15 +78,7 @@ const gasto = reactive({
   id: null,
   fecha: Date.now(),
 });
-const gastos = ref([
-  /* {
-    nombre: "Netflix",
-    cantidad: 20,
-    categoria: "Subscripciones",
-    id: "bfghgfgfhfgh",
-    fecha: Date.now(),
-  }, */
-]);
+const gastos = ref([]);
 
 watch(
   gastos,
@@ -91,6 +89,9 @@ watch(
     );
     gastado.value = totalGastado;
     disponible.value = presupuesto.value - gastado.value;
+
+    //Guardar los gastos en localStorage
+    localStorage.setItem("gastos", JSON.stringify(gastos.value));
   },
   {
     deep: true,
@@ -109,6 +110,23 @@ watch(
     deep: true,
   }
 );
+
+watch(presupuesto, () => {
+  localStorage.setItem("presupuesto", presupuesto.value);
+});
+
+onMounted(() => {
+  const presupuestoStorage = localStorage.getItem("presupuesto");
+  if (presupuestoStorage) {
+    presupuesto.value = Number(presupuestoStorage);
+    disponible.value = Number(presupuestoStorage);
+  }
+
+  const gastosStorage = localStorage.getItem("gastos");
+  if (gastosStorage) {
+    gastos.value = JSON.parse(gastosStorage);
+  }
+});
 
 const definirPresupuesto = (cantidad) => {
   presupuesto.value = cantidad;
@@ -162,34 +180,31 @@ const guardarGasto = () => {
   reiniciarStateGasto();
 };
 
-const validarGasto = () => {
-  const existe = gastos.value.find((element, index) => {
-    return element.nombre === gasto.nombre;
-  });
-  //console.log(existe);
-  if (!existe) {
-    gastos.value.push({
-      ...gasto,
-      id: generarId(),
-      //fecha: formatearFecha(date),
-    });
+const seleccionarGasto = (id) => {
+  const gastoEditar = gastos.value.filter((gasto) => gasto.id === id)[0];
+  //console.log(gastoEditar);
+  Object.assign(gasto, gastoEditar);
+  mostrarModal();
+};
 
-    ocultarModal();
-
-    //Limpiar formulario
-    reiniciarStateGasto();
-  } else {
-    existe.cantidad += gasto.cantidad;
-    ocultarModal();
-    reiniciarStateGasto();
+const eliminarGasto = (id) => {
+  if (confirm("¿Deseas eliminar el gasto?")) {
+    gastos.value = gastos.value.filter((gastoState) => gastoState.id !== id);
   }
 };
 
-const seleccionarGasto = (id) => {
-  const gastoEditar = gastos.value.filter((gasto) => gasto.id === id)[0];
-  console.log(gastoEditar);
-  Object.assign(gasto, gastoEditar);
-  mostrarModal();
+const gastosFiltrados = computed(() => {
+  if (filtro.value) {
+    return gastos.value.filter((gasto) => gasto.categoria === filtro.value);
+  }
+  return gastos.value;
+});
+
+const resetApp = () => {
+  if (confirm("¿Deseas reiniciar presupuesto y gastos?")) {
+    gastos.value = [];
+    presupuesto.value = 0;
+  }
 };
 </script>
 
