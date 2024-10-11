@@ -1,11 +1,21 @@
 <template>
   <div class="dos-columnas">
     <div class="contenedor-grafico">
-      <img :src="imagen" alt="" />
+      <p class="porcentaje">{{ porcentaje }}%</p>
+      <CircleProgress
+        :percent="porcentaje"
+        :size="250"
+        :border-with="20"
+        :border-bg-width="20"
+        fill-color="#3b82f6"
+        empty-color="#e1e1e1"
+      />
     </div>
 
     <div class="contenedor-presupuesto">
-      <button class="reset-app">Resetear App</button>
+      <button class="reset-app" type="button" @click="$emit('reset-app')">
+        Resetear App
+      </button>
       <p>
         <span>Presupuesto:</span>
         {{ formatearCantidad(presupuesto) }}
@@ -25,9 +35,14 @@
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from "vue";
 import { formatearCantidad } from "../helpers";
-import imagen from "../assets/img/grafico.jpg";
+import CircleProgress from "vue3-circle-progress";
+import "vue3-circle-progress/dist/circle-progress.css";
 
+//const colorPorcentaje = ref("#3b82f6");
+
+defineEmits(["reset-app"]);
 const props = defineProps({
   presupuesto: {
     type: Number,
@@ -42,9 +57,31 @@ const props = defineProps({
     required: true,
   },
 });
+
+const porcentaje = computed(() => {
+  // Porcentaje = ((presupuesto - disponible) / presupuesto) * 100
+  return parseInt(
+    ((props.presupuesto - props.disponible) / props.presupuesto) * 100
+  );
+});
 </script>
 
 <style scoped>
+.contenedor-grafico {
+  position: relative;
+}
+.porcentaje {
+  position: absolute;
+  margin: auto;
+  top: calc(50% - 1.5rem);
+  left: 0;
+  right: 0;
+  text-align: center;
+  z-index: 100;
+  font-size: 5rem;
+  font-weight: 900;
+  color: var(--azul);
+}
 .dos-columnas {
   display: flex;
   flex-direction: column;
