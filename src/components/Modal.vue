@@ -9,7 +9,7 @@
       :class="[modal.animar ? 'animar' : 'cerrar']"
     >
       <form class="nuevo-gasto" @submit.prevent="agregarGasto">
-        <legend>Añadir gasto</legend>
+        <legend>{{ id ? "Guardar cambios" : "Añadir gasto" }}</legend>
 
         <Alerta v-if="error">{{ error }}</Alerta>
 
@@ -53,14 +53,17 @@
           </select>
         </div>
 
-        <input type="submit" value="Añadir Gasto" />
+        <input
+          type="submit"
+          :value="[id ? 'Guardar cambios' : 'Añadir gasto']"
+        />
       </form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import cerrarModal from "../assets/img/cerrar.svg";
 import Alerta from "./Alerta.vue";
 
@@ -94,11 +97,18 @@ const props = defineProps({
     type: Number,
     required: true,
   },
+  id: {
+    type: [String, null],
+    required: true,
+  },
 });
+
+console.log(props.cantidad);
+const old = props.cantidad;
 
 const agregarGasto = () => {
   //Validar campos vacios
-  const { cantidad, categoria, nombre, disponible } = props;
+  const { cantidad, categoria, nombre, disponible, id } = props;
   if ([nombre, cantidad, categoria].includes("")) {
     error.value = "Todos los campos son obligatorios";
     setTimeout(() => {
@@ -117,13 +127,23 @@ const agregarGasto = () => {
   }
 
   //Validar que el usuario no gaste más de lo disponible
-  if (cantidad > disponible) {
-    error.value = "Has excedido el presupuesto";
-    setTimeout(() => {
-      error.value = "";
-    }, 3000);
-
-    return;
+  if (id) {
+    // Tomar en cuenta el gasto ya realizado
+    if (cantidad > old + disponible) {
+      error.value = "Has excedido el presupuesto";
+      setTimeout(() => {
+        error.value = "";
+      }, 3000);
+      return;
+    }
+  } else {
+    if (cantidad > disponible) {
+      error.value = "Has excedido el presupuesto";
+      setTimeout(() => {
+        error.value = "";
+      }, 3000);
+      return;
+    }
   }
 
   emit("guardar-gasto");
